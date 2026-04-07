@@ -197,6 +197,13 @@ module.exports = async (req, res) => {
 
   try {
     const d = req.body;
+    const company = (d.company_name || 'Company').replace(/[^a-zA-Z0-9]/g, '_');
+    const jobId   = (d.job_id || '').replace(/[^a-zA-Z0-9]/g, '_');
+
+    const fileName = jobId
+      ? `Resume_${company}_${jobId}.docx`
+      : `Resume_${company}.docx`;
+    
     const doc = buildDoc(d);
     const buffer = await Packer.toBuffer(doc);
     const base64 = buffer.toString('base64');
@@ -204,7 +211,9 @@ module.exports = async (req, res) => {
     res.status(200).json({
       base64,
       mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      fileName: 'resume.docx'
+      fileName,
+      company_name: d.company_name || '',
+      job_id: d.job_id || ''
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
