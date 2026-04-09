@@ -1,8 +1,9 @@
 const {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
-  AlignmentType, LevelFormat, BorderStyle, WidthType, VerticalAlign,
-  TabStopType
+  AlignmentType, LevelFormat, BorderStyle, WidthType, VerticalAlign
 } = require('docx');
+
+// ── removed TabStopType from imports (no longer needed) ──
 
 const DARK_BLUE = "01144c";
 const BLACK     = "000000";
@@ -61,13 +62,59 @@ function bulletItem(text) {
   });
 }
 
+// ── FIXED: now uses Table (same as educationRow) so title and date ──
+// ── never run together — title stays left, date stays right always ──
 function titleDateRow(title, date) {
-  return new Paragraph({
-    spacing: { before: 60, after: 0 },
-    tabStops: [{ type: TabStopType.RIGHT, position: CONTENT_WIDTH_DXA }],
-    children: [
-      new TextRun({ text: title, font: CALIBRI, size: PT(11), bold: true, color: BLACK }),
-      new TextRun({ text: `\t${date}`, font: CALIBRI, size: PT(11), color: BLACK })
+  const noBorder = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
+  const borders = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder };
+  return new Table({
+    width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+    columnWidths: [7560, 2520],
+    borders: {
+      top: noBorder, bottom: noBorder, left: noBorder,
+      right: noBorder, insideH: noBorder, insideV: noBorder
+    },
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            borders,
+            width: { size: 7560, type: WidthType.DXA },
+            verticalAlign: VerticalAlign.TOP,
+            margins: { top: 0, bottom: 0, left: 0, right: 0 },
+            children: [new Paragraph({
+              spacing: { before: 60, after: 0 },
+              children: [
+                new TextRun({
+                  text: title,
+                  font: CALIBRI,
+                  size: PT(11),
+                  bold: true,
+                  color: BLACK
+                })
+              ]
+            })]
+          }),
+          new TableCell({
+            borders,
+            width: { size: 2520, type: WidthType.DXA },
+            verticalAlign: VerticalAlign.TOP,
+            margins: { top: 0, bottom: 0, left: 0, right: 0 },
+            children: [new Paragraph({
+              alignment: AlignmentType.RIGHT,
+              spacing: { before: 60, after: 0 },
+              children: [
+                new TextRun({
+                  text: date,
+                  font: CALIBRI,
+                  size: PT(11),
+                  color: BLACK
+                })
+              ]
+            })]
+          })
+        ]
+      })
     ]
   });
 }
@@ -143,7 +190,7 @@ function buildDoc(d) {
 
   // EXPERIENCE
   children.push(sectionTitle("Experience"));
-  children.push(titleDateRow("AI Full Stack Engineer - Freelance", "July 2025 - Present"));
+  children.push(titleDateRow("AI Engineer - Freelance", "July 2025 - Present"));
   safeArray(d.freelance_bullets).forEach(b => children.push(bulletItem(b)));
   children.push(titleDateRow("Software Engineer, Avis Budget Group – Parsippany, NJ (Hybrid)", "June 2022 – July 2025"));
   safeArray(d.avis_bullets).forEach(b => children.push(bulletItem(b)));
@@ -203,7 +250,7 @@ module.exports = async (req, res) => {
     const fileName = jobId
       ? `Resume_${company}_${jobId}.docx`
       : `Resume_${company}.docx`;
-    
+
     const doc = buildDoc(d);
     const buffer = await Packer.toBuffer(doc);
     const base64 = buffer.toString('base64');
